@@ -11,3 +11,74 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum Side {
+  ask
+  bid
+}
+
+enum OrderType {
+  limit
+  market
+}
+
+enum FillsType {
+  taker
+  maker
+}
+
+enum Status {
+  filled
+  open
+  cancelled
+}
+
+model user {
+  id            String  @id @default(uuid())
+  username      String
+  email         String  @unique
+  refresh_token String?
+  password      String
+  fills         fills[]
+  orders        order[]
+}
+
+model asset {
+  id     String  @id @default(uuid())
+  name   String
+  symbol String  @unique
+  fills  fills[]
+  orders order[]
+}
+
+model order {
+  id         String    @id @default(uuid())
+  user_id    String
+  asset_id   String
+  quantity   Int
+  price      Int
+  side       Side
+  type       OrderType
+  filled     Int
+  status     Status
+  created_at DateTime
+  user       user      @relation(fields: [user_id], references: [id])
+  asset      asset     @relation(fields: [asset_id], references: [id])
+  fills      fills[]
+}
+
+model fills {
+  id         String    @id @default(uuid())
+  user_id    String
+  order_id   String
+  asset_id   String
+  quantity   Int
+  price      Int
+  side       Side
+  type       FillsType
+  created_at DateTime
+
+  asset asset @relation(fields: [asset_id], references: [id])
+  order order @relation(fields: [order_id], references: [id])
+  user  user  @relation(fields: [user_id], references: [id])
+}
