@@ -1,0 +1,251 @@
+package account
+
+import "fmt"
+
+type AccountService struct {
+	ledger   LedgerRepository
+	balances BalanceStore
+}
+
+func NewAccountService(
+	ledger LedgerRepository,
+	balances BalanceStore,
+) *AccountService {
+	return &AccountService{
+		ledger:   ledger,
+		balances: balances,
+	}
+}
+
+func (acc *AccountService) GetBalance(userID, asset string) (*Balance, error) {
+	balance, ok := acc.balances.Get(userID, asset)
+	if !ok {
+		return nil, fmt.Errorf("balance not found for userID %v and asset %v", userID, asset)
+	}
+	return &balance, nil
+}
+
+func (acc *AccountService) Deposit(userID, asset string, amount int64) error {
+	err := acc.balances.Update(userID, asset, func(b *Balance) error {
+		b.Available += amount
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to deposit for userID: %v and error: %w", userID, err)
+	}
+
+	ledgerEntry := &LedgerEntry{
+		UserID: userID,
+		Asset:  asset,
+		Amount: amount,
+		Type:   Deposit,
+	}
+
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for deposit for userID; %v and error: %w", userID, err)
+	}
+	return nil
+}
+
+func (acc *AccountService) Withdraw(userID, asset string, amount int64) error {
+	err := acc.balances.Update(userID, asset, func(b *Balance) error {
+		if b.Available < amount {
+			return fmt.Errorf("insufficient available asset: %v", b.Asset)
+		}
+
+		b.Available -= amount
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to withdraw for userID: %v and error: %w", userID, err)
+	}
+
+	ledgerEntry := &LedgerEntry{
+		UserID: userID,
+		Asset:  asset,
+		Amount: amount,
+		Type:   Withdrawal,
+	}
+
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for withdraw for userID; %v and error: %w", userID, err)
+	}
+	return nil
+}
+
+func (acc *AccountService) Reserve(
+	userID string,
+	asset string,
+	amount int64,
+	refrenceID string,
+) error {
+	err := acc.balances.Update(userID, asset, func(b *Balance) error {
+		if b.Available < amount {
+			return fmt.Errorf("insufficient available asset: %v", b.Asset)
+		}
+
+		b.Available -= amount
+		b.Reserved += amount
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("unable to reserve for userID: %v and error: %w", userID, err)
+	}
+
+	ledgerEntry := &LedgerEntry{
+		UserID:      userID,
+		Asset:       asset,
+		Amount:      amount,
+		Type:        Reserve,
+		ReferenceID: refrenceID,
+	}
+
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for reserve for userID; %v and error: %w", userID, err)
+	}
+	return nil
+}
+
+func (acc *AccountService) Release(
+	userID string,
+	asset string,
+	amount int64,
+	refrenceID string,
+) error {
+	err := acc.balances.Update(userID, asset, func(b *Balance) error {
+		if b.Reserved < amount {
+			return fmt.Errorf("insufficient reserved asset: %v", b.Asset)
+		}
+		b.Reserved -= amount
+		b.Available += amount
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to release for userID: %v and error: %w", userID, err)
+	}
+
+	ledgerEntry := &LedgerEntry{
+		UserID:      userID,
+		Asset:       asset,
+		Amount:      amount,
+		Type:        Release,
+		ReferenceID: refrenceID,
+	}
+
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for release for userID; %v and error: %w", userID, err)
+	}
+	return nil
+}
+
+func (acc *AccountService) SettleTrade(settelment *Settlement) error {
+	err := acc.balances.Transact(func(tx BalanceTransaction) error {
+		err := tx.Update(settelment.SellerID, settelment.BaseAsset, func(b *Balance) error {
+
+			if b.Reserved < settelment.Quantity {
+				return fmt.Errorf("insufficient reserved asset: %v", b.Asset)
+			}
+			b.Reserved -= settelment.Quantity
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("unable to settle trade for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.BaseAsset, err)
+		}
+
+		err = tx.Update(settelment.SellerID, settelment.QuoteAsset, func(b *Balance) error {
+			amount := settelment.Quantity * settelment.Price
+			b.Available += amount
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("unable to settle trade for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.QuoteAsset, err)
+		}
+
+		err = tx.Update(settelment.BuyerID, settelment.BaseAsset, func(b *Balance) error {
+			b.Available += settelment.Quantity
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("unable to settle trade for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.BaseAsset, err)
+		}
+
+		err = tx.Update(settelment.BuyerID, settelment.QuoteAsset, func(b *Balance) error {
+			if b.Reserved < settelment.Quantity*settelment.Price {
+				return fmt.Errorf("insufficient reserved asset: %v", b.Asset)
+			}
+			b.Reserved -= settelment.Quantity * settelment.Price
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("unable to settle trade for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.QuoteAsset, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("balances transaction failed error: %w", err)
+	}
+	ledgerEntry := &LedgerEntry{
+		UserID:      settelment.SellerID,
+		Asset:       settelment.BaseAsset,
+		Amount:      settelment.Quantity,
+		Type:        TradeDebit,
+		ReferenceID: settelment.ReferenceID,
+	}
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for trade debit for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.BaseAsset, err)
+	}
+
+	ledgerEntry = &LedgerEntry{
+		UserID:      settelment.SellerID,
+		Asset:       settelment.QuoteAsset,
+		Amount:      settelment.Quantity * settelment.Price,
+		Type:        TradeCredit,
+		ReferenceID: settelment.ReferenceID,
+	}
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for trade credit for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.QuoteAsset, err)
+	}
+
+	ledgerEntry = &LedgerEntry{
+		UserID:      settelment.BuyerID,
+		Asset:       settelment.BaseAsset,
+		Amount:      settelment.Quantity,
+		Type:        TradeCredit,
+		ReferenceID: settelment.ReferenceID,
+	}
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for trade credit for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.BaseAsset, err)
+	}
+
+	ledgerEntry = &LedgerEntry{
+		UserID:      settelment.BuyerID,
+		Asset:       settelment.QuoteAsset,
+		Amount:      settelment.Quantity * settelment.Price,
+		Type:        TradeDebit,
+		ReferenceID: settelment.ReferenceID,
+	}
+	err = acc.ledger.Append(ledgerEntry)
+
+	if err != nil {
+		return fmt.Errorf("unbale to append ledger entry for trade debit for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.QuoteAsset, err)
+	}
+	return nil
+}
