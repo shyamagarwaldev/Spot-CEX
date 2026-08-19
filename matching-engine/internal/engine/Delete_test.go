@@ -10,8 +10,8 @@ import (
 func TestDelete_PartiallyFilledOrder(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 20, Ask, "seller", "A1")
-	ob.SubmitLimit(100, 8, Bid, "buyer", "B1")
+	ob.SubmitLimit(100, 20, Ask, "seller", "A1", 1)
+	ob.SubmitLimit(100, 8, Bid, "buyer", "B1", 2)
 
 	level, exists := ob.Asks.Get(100)
 	require.True(t, exists)
@@ -31,8 +31,8 @@ func TestDelete_PartiallyFilledOrder(t *testing.T) {
 func TestDelete_RecentOrder(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 20, Ask, "seller1", "A1")
-	ob.SubmitLimit(100, 8, Ask, "seller2", "A2")
+	ob.SubmitLimit(100, 20, Ask, "seller1", "A1", 1)
+	ob.SubmitLimit(100, 8, Ask, "seller2", "A2", 2)
 
 	level, exists := ob.Asks.Get(100)
 	require.True(t, exists)

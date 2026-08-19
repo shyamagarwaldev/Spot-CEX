@@ -19,6 +19,7 @@ const (
 )
 
 type Order struct {
+	Sequence  uint64
 	Quantity  int64
 	Price     int64
 	Side      Side
@@ -40,6 +41,7 @@ type Fill struct {
 }
 
 type Trade struct {
+	ID          string
 	BuyOrderID  string
 	SellOrderID string
 
@@ -67,9 +69,13 @@ type OrderBook struct {
 	Bids   *treemap.Map[int64, *PriceLevel]
 	Asks   *treemap.Map[int64, *PriceLevel]
 	Orders map[string]*Order
+
+	LastTradePrice    int64
+	LastTradeQuantity int64
+	LastOrderSequence uint64
 }
 
-func NewOrder(price, quantity int64, id, user_id string, side Side, order_type OrderType) *Order {
+func NewOrder(price, quantity int64, id, user_id string, side Side, order_type OrderType, sequence uint64) *Order {
 	return &Order{
 		Price:     price,
 		Quantity:  quantity,
@@ -77,6 +83,7 @@ func NewOrder(price, quantity int64, id, user_id string, side Side, order_type O
 		UserID:    user_id,
 		Side:      side,
 		OrderType: order_type,
+		Sequence:  sequence,
 	}
 }
 
@@ -190,6 +197,19 @@ func newFill(incomingOrder *Order) Fill {
 		FilledQuantity:    0,
 		TotalPrice:        0,
 	}
+}
+
+func (ob *OrderBook) RequiredMarketFunds(quantity int64) int64 {
+	var totalAmount int64 = 0
+
+	it := ob.Asks.Iterator()
+
+	for it.Next() && quantity > 0 {
+		qty := min(quantity, it.Value().Quantity)
+		totalAmount += it.Key() * qty
+		quantity -= qty
+	}
+	return totalAmount
 }
 
 func (ob *OrderBook) matchBuy(incomingOrder *Order) ([]Fill, []Trade) {
@@ -323,8 +343,8 @@ func (ob *OrderBook) matchSell(incomingOrder *Order) ([]Fill, []Trade) {
 	return fills, trades
 }
 
-func (ob *OrderBook) SubmitLimit(price, quantity int64, side Side, user_id, id string) ([]Fill, []Trade) {
-	order := NewOrder(price, quantity, id, user_id, side, Limit)
+func (ob *OrderBook) SubmitLimit(price, quantity int64, side Side, user_id, id string, sequence uint64) ([]Fill, []Trade) {
+	order := NewOrder(price, quantity, id, user_id, side, Limit, sequence)
 	switch order.Side {
 	case Bid:
 		return ob.matchBuy(order)
@@ -335,8 +355,8 @@ func (ob *OrderBook) SubmitLimit(price, quantity int64, side Side, user_id, id s
 	}
 }
 
-func (ob *OrderBook) SubmitMarket(quantity int64, side Side, user_id, id string) ([]Fill, []Trade) {
-	order := NewOrder(0, quantity, id, user_id, side, Market)
+func (ob *OrderBook) SubmitMarket(quantity int64, side Side, user_id, id string, sequence uint64) ([]Fill, []Trade) {
+	order := NewOrder(0, quantity, id, user_id, side, Market, sequence)
 	switch order.Side {
 	case Bid:
 		return ob.matchBuy(order)

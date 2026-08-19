@@ -1,15 +1,19 @@
 package account
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/shyamagarwaldev/Spot-CEX/matching-engine/internal/ledger"
+)
 
 type AccountService struct {
-	ledger   LedgerRepository
-	balances BalanceStore
+	ledger   ledger.ILedgerRepository
+	balances IBalanceStore
 }
 
 func NewAccountService(
-	ledger LedgerRepository,
-	balances BalanceStore,
+	ledger ledger.ILedgerRepository,
+	balances IBalanceStore,
 ) *AccountService {
 	return &AccountService{
 		ledger:   ledger,
@@ -35,11 +39,11 @@ func (acc *AccountService) Deposit(userID, asset string, amount int64) error {
 		return fmt.Errorf("unable to deposit for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &LedgerEntry{
+	ledgerEntry := &ledger.LedgerEntry{
 		UserID: userID,
 		Asset:  asset,
 		Amount: amount,
-		Type:   Deposit,
+		Type:   ledger.Deposit,
 	}
 
 	err = acc.ledger.Append(ledgerEntry)
@@ -64,11 +68,11 @@ func (acc *AccountService) Withdraw(userID, asset string, amount int64) error {
 		return fmt.Errorf("unable to withdraw for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &LedgerEntry{
+	ledgerEntry := &ledger.LedgerEntry{
 		UserID: userID,
 		Asset:  asset,
 		Amount: amount,
-		Type:   Withdrawal,
+		Type:   ledger.Withdrawal,
 	}
 
 	err = acc.ledger.Append(ledgerEntry)
@@ -98,11 +102,11 @@ func (acc *AccountService) Reserve(
 		return fmt.Errorf("unable to reserve for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &LedgerEntry{
+	ledgerEntry := &ledger.LedgerEntry{
 		UserID:      userID,
 		Asset:       asset,
 		Amount:      amount,
-		Type:        Reserve,
+		Type:        ledger.Reserve,
 		ReferenceID: refrenceID,
 	}
 
@@ -133,11 +137,11 @@ func (acc *AccountService) Release(
 		return fmt.Errorf("unable to release for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &LedgerEntry{
+	ledgerEntry := &ledger.LedgerEntry{
 		UserID:      userID,
 		Asset:       asset,
 		Amount:      amount,
-		Type:        Release,
+		Type:        ledger.Release,
 		ReferenceID: refrenceID,
 	}
 
@@ -196,11 +200,11 @@ func (acc *AccountService) SettleTrade(settelment *Settlement) error {
 	if err != nil {
 		return fmt.Errorf("balances transaction failed error: %w", err)
 	}
-	ledgerEntry := &LedgerEntry{
+	ledgerEntry := &ledger.LedgerEntry{
 		UserID:      settelment.SellerID,
 		Asset:       settelment.BaseAsset,
 		Amount:      settelment.Quantity,
-		Type:        TradeDebit,
+		Type:        ledger.TradeDebit,
 		ReferenceID: settelment.ReferenceID,
 	}
 	err = acc.ledger.Append(ledgerEntry)
@@ -209,11 +213,11 @@ func (acc *AccountService) SettleTrade(settelment *Settlement) error {
 		return fmt.Errorf("unbale to append ledger entry for trade debit for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.BaseAsset, err)
 	}
 
-	ledgerEntry = &LedgerEntry{
+	ledgerEntry = &ledger.LedgerEntry{
 		UserID:      settelment.SellerID,
 		Asset:       settelment.QuoteAsset,
 		Amount:      settelment.Quantity * settelment.Price,
-		Type:        TradeCredit,
+		Type:        ledger.TradeCredit,
 		ReferenceID: settelment.ReferenceID,
 	}
 	err = acc.ledger.Append(ledgerEntry)
@@ -222,11 +226,11 @@ func (acc *AccountService) SettleTrade(settelment *Settlement) error {
 		return fmt.Errorf("unbale to append ledger entry for trade credit for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.QuoteAsset, err)
 	}
 
-	ledgerEntry = &LedgerEntry{
+	ledgerEntry = &ledger.LedgerEntry{
 		UserID:      settelment.BuyerID,
 		Asset:       settelment.BaseAsset,
 		Amount:      settelment.Quantity,
-		Type:        TradeCredit,
+		Type:        ledger.TradeCredit,
 		ReferenceID: settelment.ReferenceID,
 	}
 	err = acc.ledger.Append(ledgerEntry)
@@ -235,11 +239,11 @@ func (acc *AccountService) SettleTrade(settelment *Settlement) error {
 		return fmt.Errorf("unbale to append ledger entry for trade credit for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.BaseAsset, err)
 	}
 
-	ledgerEntry = &LedgerEntry{
+	ledgerEntry = &ledger.LedgerEntry{
 		UserID:      settelment.BuyerID,
 		Asset:       settelment.QuoteAsset,
 		Amount:      settelment.Quantity * settelment.Price,
-		Type:        TradeDebit,
+		Type:        ledger.TradeDebit,
 		ReferenceID: settelment.ReferenceID,
 	}
 	err = acc.ledger.Append(ledgerEntry)

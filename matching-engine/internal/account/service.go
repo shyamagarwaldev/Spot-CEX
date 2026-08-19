@@ -15,7 +15,7 @@ type Settlement struct {
 	ReferenceID string
 }
 
-type Service interface {
+type IAccountService interface {
 	GetBalance(userID, asset string) (*Balance, error)
 
 	Deposit(

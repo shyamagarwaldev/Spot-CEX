@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package account;
+
+option go_package = "github.com/shyamagarwaldev/Spot-CEX/matching-engine/genproto/account;account";
+
+service AccountService {
+    rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+    rpc GetBalances(GetBalancesRequest) returns (GetBalancesResponse);
+}
+
+message GetBalanceRequest {
+    string request_id = 1;
+    string user_id = 2;
+    string asset = 3;
+}
+
+message GetBalancesRequest {
+    string request_id = 1;
+    string user_id = 2;
+}
+
+message GetBalanceResponse {
+    string request_id = 1;
+    string user_id = 2;
+    string asset = 3;
+
+    int64 available = 4;
+    int64 reserved = 5;
+}
+
+message GetBalancesResponse {
+    string request_id = 1;
+    string user_id = 2;
+
+    map<string, Balance> balances = 3;
+}
+
+message Balance {
+    int64 available = 1;
+    int64 reserved = 2;
+}

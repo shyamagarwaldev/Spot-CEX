@@ -17,7 +17,7 @@ type BalanceTransaction interface {
 	) error
 }
 
-type BalanceStore interface {
+type IBalanceStore interface {
 	Set(userID, asset string, balance Balance)
 	Get(userID, asset string) (Balance, bool)
 	Update(

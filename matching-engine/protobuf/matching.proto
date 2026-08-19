@@ -4,36 +4,104 @@ package matching;
 
 option go_package = "github.com/shyamagarwaldev/Spot-CEX/matching-engine/genproto/matching;matching";
 
-service MatchingEngineService{
+service MatchingEngineService {
+    // Submit a new limit or market order.
     rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+
+    // Cancel an existing open order.
+    rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+
+    // Get the current ticker for a market.
+    rpc GetTicker(GetTickerRequest) returns (GetTickerResponse);
+
+    // Get the current order book depth for a market.
+    rpc GetDepth(GetDepthRequest) returns (GetDepthResponse);
 }
 
-message CreateOrderRequest{
+message CreateOrderRequest {
     string request_id = 1;
     string order_id = 2;
     string user_id = 3;
-    string assest_id = 4;
+    string symbol = 4;
+    string asset = 5;
 
-    Side side = 5;
-    OrderType type = 6;
+    Side side = 6;
+    OrderType type = 7;
 
-    int64 price = 7;
-    int64 quantity = 8;
+    optional int64 price = 8;
+    int64 quantity = 9;
 }
 
-enum Side{
+message CreateOrderResponse {
+    string request_id = 1;
+    string order_id = 2;
+
+    int64 filled_quantity = 3;
+    int64 remaining_quantity = 4;
+    int64 total_price = 5;
+    Side side = 6;
+    string user_id = 7;
+}
+
+message CancelOrderRequest {
+    string request_id = 1;
+    string order_id = 2;
+    string user_id = 3;
+    string symbol = 4;
+    string asset = 5;
+}
+
+message CancelOrderResponse {
+    string request_id = 1;
+    string order_id = 2;
+
+    int64 cancelled_quantity = 3;
+    int64 remaining_quantity = 4;
+}
+
+message GetTickerRequest {
+    string request_id = 1;
+    string symbol = 2;
+}
+
+message GetTickerResponse {
+    string request_id = 1;
+    string symbol = 2;
+
+    int64 last_price = 3;
+    int64 bid_price = 4;
+    int64 ask_price = 5;
+
+    int64 volume = 6;
+}
+
+message GetDepthRequest {
+    string request_id = 1;
+    string symbol = 2;
+
+    // Number of price levels to return on each side.
+    int32 limit = 3;
+}
+
+message GetDepthResponse {
+    string request_id = 1;
+    string symbol = 2;
+
+    repeated PriceLevel bids = 3;
+    repeated PriceLevel asks = 4;
+}
+
+message PriceLevel {
+    int64 price = 1;
+    int64 quantity = 2;
+}
+
+enum Side {
     BID = 0;
     ASK = 1;
 }
 
-enum OrderType{
+enum OrderType {
     LIMIT = 0;
     MARKET = 1;
-}
-
-message CreateOrderResponse{
-    int64 filled_quantity = 1;
-    int64 remaining_qantity = 2;
-    int64 total_price = 3;
-    string order_id = 4;
 }

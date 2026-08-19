@@ -10,7 +10,7 @@ import (
 func TestSubmitLimit_LimitOrder(t *testing.T) {
 	orderBook := NewOrderBook("BTC", "BITCOIN")
 
-	fills, trades := orderBook.SubmitLimit(100, 8, Bid, "1", "1")
+	fills, trades := orderBook.SubmitLimit(100, 8, Bid, "1", "1", 1)
 
 	require.Len(t, fills, 1)
 	require.Len(t, trades, 0)
@@ -32,15 +32,15 @@ func TestSubmitLimit_LimitOrder(t *testing.T) {
 func TestSubmitLimit_SingleTrade_MarketableLimitOrder(t *testing.T) {
 	orderBook := NewOrderBook("BTC", "BITCOIN")
 
-	fills1, trades1 := orderBook.SubmitLimit(100, 8, Bid, "1", "1")
-	fills2, trades2 := orderBook.SubmitLimit(110, 8, Ask, "2", "2")
+	fills1, trades1 := orderBook.SubmitLimit(100, 8, Bid, "1", "1", 1)
+	fills2, trades2 := orderBook.SubmitLimit(110, 8, Ask, "2", "2", 2)
 
 	require.Len(t, fills1, 1)
 	require.Len(t, fills2, 1)
 	require.Len(t, trades1, 0)
 	require.Len(t, trades2, 0)
 
-	fills3, trades3 := orderBook.SubmitLimit(120, 8, Bid, "3", "3")
+	fills3, trades3 := orderBook.SubmitLimit(120, 8, Bid, "3", "3", 3)
 
 	require.Len(t, fills3, 2)
 	require.Len(t, trades3, 1)
@@ -72,9 +72,9 @@ func TestSubmitLimit_SingleTrade_MarketableLimitOrder(t *testing.T) {
 func TestSubmitLimit_MultiTrade_PartialLimitOrder(t *testing.T) {
 	orderBook := NewOrderBook("BTC", "BITCOIN")
 
-	fills1, trades1 := orderBook.SubmitLimit(100, 8, Ask, "1", "1")
-	fills2, trades2 := orderBook.SubmitLimit(100, 18, Ask, "2", "2")
-	fills3, trades3 := orderBook.SubmitLimit(110, 18, Ask, "3", "3")
+	fills1, trades1 := orderBook.SubmitLimit(100, 8, Ask, "1", "1", 1)
+	fills2, trades2 := orderBook.SubmitLimit(100, 18, Ask, "2", "2", 2)
+	fills3, trades3 := orderBook.SubmitLimit(110, 18, Ask, "3", "3", 3)
 
 	require.Len(t, fills1, 1)
 	require.Len(t, fills2, 1)
@@ -83,7 +83,7 @@ func TestSubmitLimit_MultiTrade_PartialLimitOrder(t *testing.T) {
 	require.Len(t, trades2, 0)
 	require.Len(t, trades3, 0)
 
-	fills4, trades4 := orderBook.SubmitLimit(110, 27, Bid, "4", "4")
+	fills4, trades4 := orderBook.SubmitLimit(110, 27, Bid, "4", "4", 4)
 
 	// 100 * 26 + 110 * 1 = 2710
 	require.Len(t, fills4, 4)
@@ -121,15 +121,15 @@ func TestSubmitLimit_MultiTrade_PartialLimitOrder(t *testing.T) {
 func TestSubmitLimit_FIFOAtSamePrice(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 10, Ask, "seller1", "A1")
-	ob.SubmitLimit(100, 10, Ask, "seller2", "A2")
+	ob.SubmitLimit(100, 10, Ask, "seller1", "A1", 1)
+	ob.SubmitLimit(100, 10, Ask, "seller2", "A2", 2)
 
-	_, trades := ob.SubmitLimit(100, 10, Bid, "buyer1", "B1")
+	_, trades := ob.SubmitLimit(100, 10, Bid, "buyer1", "B1", 3)
 
 	require.Len(t, trades, 1)
 	require.Equal(t, "A1", trades[0].SellOrderID)
 
-	_, trades = ob.SubmitLimit(100, 10, Bid, "buyer2", "B2")
+	_, trades = ob.SubmitLimit(100, 10, Bid, "buyer2", "B2", 4)
 
 	require.Len(t, trades, 1)
 	require.Equal(t, "A2", trades[0].SellOrderID)
@@ -139,9 +139,9 @@ func TestSubmitLimit_FIFOAtSamePrice(t *testing.T) {
 func TestSubmitLimit_NonMarketableOrder(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(110, 10, Ask, "seller", "A1")
+	ob.SubmitLimit(110, 10, Ask, "seller", "A1", 1)
 
-	fills, trades := ob.SubmitLimit(100, 10, Bid, "buyer", "B1")
+	fills, trades := ob.SubmitLimit(100, 10, Bid, "buyer", "B1", 2)
 
 	require.Len(t, fills, 1)
 	require.Len(t, trades, 0)
@@ -157,9 +157,9 @@ func TestSubmitLimit_NonMarketableOrder(t *testing.T) {
 func TestSubmitLimit_PartialMakerFill(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 20, Ask, "seller", "A1")
+	ob.SubmitLimit(100, 20, Ask, "seller", "A1", 1)
 
-	fills, trades := ob.SubmitLimit(100, 8, Bid, "buyer", "B1")
+	fills, trades := ob.SubmitLimit(100, 8, Bid, "buyer", "B1", 2)
 
 	require.Len(t, fills, 2)
 	require.Len(t, trades, 1)
@@ -185,9 +185,9 @@ func TestSubmitLimit_PartialMakerFill(t *testing.T) {
 func TestSubmitLimit_PartialTakerFill(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 5, Ask, "seller", "A1")
+	ob.SubmitLimit(100, 5, Ask, "seller", "A1", 1)
 
-	fills, trades := ob.SubmitLimit(110, 10, Bid, "buyer", "B1")
+	fills, trades := ob.SubmitLimit(110, 10, Bid, "buyer", "B1", 2)
 
 	require.Len(t, fills, 2)
 	require.Len(t, trades, 1)
@@ -214,11 +214,11 @@ func TestSubmitLimit_PartialTakerFill(t *testing.T) {
 func TestSubmitLimit_BuyBestPricePriority(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(105, 10, Ask, "seller1", "A1")
-	ob.SubmitLimit(100, 10, Ask, "seller2", "A2")
-	ob.SubmitLimit(110, 10, Ask, "seller3", "A3")
+	ob.SubmitLimit(105, 10, Ask, "seller1", "A1", 1)
+	ob.SubmitLimit(100, 10, Ask, "seller2", "A2", 2)
+	ob.SubmitLimit(110, 10, Ask, "seller3", "A3", 3)
 
-	_, trades := ob.SubmitLimit(110, 15, Bid, "buyer", "B1")
+	_, trades := ob.SubmitLimit(110, 15, Bid, "buyer", "B1", 4)
 
 	require.Len(t, trades, 2)
 
@@ -242,12 +242,12 @@ func TestSubmitLimit_BuyBestPricePriority(t *testing.T) {
 func TestSubmitLimit_DuplicateBuyOrder(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	fills, trades := ob.SubmitLimit(200, 15, Bid, "buyer", "B1")
+	fills, trades := ob.SubmitLimit(200, 15, Bid, "buyer", "B1", 1)
 
 	require.Len(t, trades, 0)
 	require.Len(t, fills, 1)
 
-	fills, trades = ob.SubmitLimit(200, 15, Bid, "buyer", "B1")
+	fills, trades = ob.SubmitLimit(200, 15, Bid, "buyer", "B1", 2)
 
 	require.Nil(t, fills)
 	require.Nil(t, trades)
@@ -261,11 +261,11 @@ func TestSubmitLimit_DuplicateBuyOrder(t *testing.T) {
 func TestSubmitLimit_SellBestPricePriority(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(105, 10, Bid, "buyer1", "B1")
-	ob.SubmitLimit(110, 10, Bid, "buyer2", "B2")
-	ob.SubmitLimit(100, 10, Bid, "buyer3", "B3")
+	ob.SubmitLimit(105, 10, Bid, "buyer1", "B1", 1)
+	ob.SubmitLimit(110, 10, Bid, "buyer2", "B2", 2)
+	ob.SubmitLimit(100, 10, Bid, "buyer3", "B3", 3)
 
-	_, trades := ob.SubmitLimit(100, 15, Ask, "seller", "A1")
+	_, trades := ob.SubmitLimit(100, 15, Ask, "seller", "A1", 4)
 
 	require.Len(t, trades, 2)
 
@@ -288,12 +288,12 @@ func TestSubmitLimit_SellBestPricePriority(t *testing.T) {
 func TestSubmitLimit_DuplicateSellOrder(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	fills, trades := ob.SubmitLimit(200, 15, Ask, "seller", "A1")
+	fills, trades := ob.SubmitLimit(200, 15, Ask, "seller", "A1", 1)
 
 	require.Len(t, trades, 0)
 	require.Len(t, fills, 1)
 
-	fills, trades = ob.SubmitLimit(200, 15, Ask, "seller", "A1")
+	fills, trades = ob.SubmitLimit(200, 15, Ask, "seller", "A1", 2)
 
 	require.Nil(t, fills)
 	require.Nil(t, trades)
@@ -307,9 +307,9 @@ func TestSubmitLimit_DuplicateSellOrder(t *testing.T) {
 func TestSubmitLimit_RemoveEmptyPriceLevel(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 10, Ask, "seller", "A1")
+	ob.SubmitLimit(100, 10, Ask, "seller", "A1", 1)
 
-	_, trades := ob.SubmitLimit(100, 10, Bid, "buyer", "B1")
+	_, trades := ob.SubmitLimit(100, 10, Bid, "buyer", "B1", 2)
 
 	require.Len(t, trades, 1)
 
@@ -323,12 +323,12 @@ func TestSubmitLimit_RemoveEmptyPriceLevel(t *testing.T) {
 func TestSubmitLimit_FIFOIndependentPerPriceLevel(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 10, Ask, "seller1", "A1")
-	ob.SubmitLimit(100, 10, Ask, "seller2", "A2")
-	ob.SubmitLimit(105, 10, Ask, "seller3", "A3")
-	ob.SubmitLimit(105, 10, Ask, "seller4", "A4")
+	ob.SubmitLimit(100, 10, Ask, "seller1", "A1", 1)
+	ob.SubmitLimit(100, 10, Ask, "seller2", "A2", 2)
+	ob.SubmitLimit(105, 10, Ask, "seller3", "A3", 3)
+	ob.SubmitLimit(105, 10, Ask, "seller4", "A4", 4)
 
-	_, trades := ob.SubmitLimit(110, 25, Bid, "buyer", "B1")
+	_, trades := ob.SubmitLimit(110, 25, Bid, "buyer", "B1", 5)
 
 	require.Len(t, trades, 3)
 
@@ -354,7 +354,7 @@ func TestSubmitLimit_FIFOIndependentPerPriceLevel(t *testing.T) {
 func TestSubmitLimit_ZeroQuantity(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	fills, trades := ob.SubmitLimit(100, 0, Bid, "buyer", "B1")
+	fills, trades := ob.SubmitLimit(100, 0, Bid, "buyer", "B1", 1)
 
 	require.Len(t, fills, 1)
 	require.Len(t, trades, 0)
@@ -370,9 +370,9 @@ func TestSubmitLimit_ZeroQuantity(t *testing.T) {
 func TestSubmitLimit_TradeMetadata(t *testing.T) {
 	ob := NewOrderBook("BTC", "BITCOIN")
 
-	ob.SubmitLimit(100, 10, Ask, "seller", "S1")
+	ob.SubmitLimit(100, 10, Ask, "seller", "S1", 2)
 
-	_, trades := ob.SubmitLimit(105, 4, Bid, "buyer", "B1")
+	_, trades := ob.SubmitLimit(105, 4, Bid, "buyer", "B1", 3)
 
 	require.Len(t, trades, 1)
 
