@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package matching;
+
+option go_package = "github.com/shyamagarwaldev/Spot-CEX/matching-engine/genproto/matching;matching";
+
+service MatchingEngineService{
+    rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+}
+
+message CreateOrderRequest{
+    string request_id = 1;
+    string order_id = 2;
+    string user_id = 3;
+    string assest_id = 4;
+
+    Side side = 5;
+    OrderType type = 6;
+
+    int64 price = 7;
+    int64 quantity = 8;
+}
+
+enum Side{
+    BID = 0;
+    ASK = 1;
+}
+
+enum OrderType{
+    LIMIT = 0;
+    MARKET = 1;
+}
+
+message CreateOrderResponse{
+    int64 filled_quantity = 1;
+    int64 remaining_qantity = 2;
+    int64 total_price = 3;
+    string order_id = 4;
+}
