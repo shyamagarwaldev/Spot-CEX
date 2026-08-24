@@ -1,9 +1,9 @@
 package ledger
 
-type LedgerEntryType uint8
+type LedgerEventType uint8
 
 const (
-	Deposit LedgerEntryType = iota
+	Deposit LedgerEventType = iota
 	Withdrawal
 	Reserve
 	Release
@@ -11,29 +11,19 @@ const (
 	TradeCredit
 )
 
-type LedgerEntry struct {
+type LedgerEvent struct {
 	ID     string
 	UserID string
 
 	Asset  string
 	Amount int64
 
-	Type LedgerEntryType
+	Type LedgerEventType
 
 	ReferenceID string
 }
 
 type ILedgerRepository interface {
-	Append(entry *LedgerEntry) error
-	GetEntries(accountID string) ([]LedgerEntry, error)
-	BulkAppend(entry ...*LedgerEntry) error
+	Publish(*LedgerEvent) error
+	BulkPublish(...*LedgerEvent) error
 }
-
-type LedgerRepository struct {
-}
-
-func NewLederRepository() *LedgerRepository
-
-func (l *LedgerRepository) Append(entry *LedgerEntry) error
-func (l *LedgerRepository) GetEntries(accountID string) ([]LedgerEntry, error)
-func (l *LedgerRepository) BulkAppend(entry ...*LedgerEntry) error

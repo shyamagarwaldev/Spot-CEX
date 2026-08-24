@@ -39,17 +39,17 @@ func (acc *AccountService) Deposit(userID, asset string, amount int64) error {
 		return fmt.Errorf("unable to deposit for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &ledger.LedgerEntry{
+	ledgerEvent := &ledger.LedgerEvent{
 		UserID: userID,
 		Asset:  asset,
 		Amount: amount,
 		Type:   ledger.Deposit,
 	}
 
-	err = acc.ledger.Append(ledgerEntry)
+	err = acc.ledger.Publish(ledgerEvent)
 
 	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for deposit for userID; %v and error: %w", userID, err)
+		return fmt.Errorf("unbale to publish ledger event for deposit for userID; %v and error: %w", userID, err)
 	}
 	return nil
 }
@@ -68,17 +68,17 @@ func (acc *AccountService) Withdraw(userID, asset string, amount int64) error {
 		return fmt.Errorf("unable to withdraw for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &ledger.LedgerEntry{
+	ledgerEvent := &ledger.LedgerEvent{
 		UserID: userID,
 		Asset:  asset,
 		Amount: amount,
 		Type:   ledger.Withdrawal,
 	}
 
-	err = acc.ledger.Append(ledgerEntry)
+	err = acc.ledger.Publish(ledgerEvent)
 
 	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for withdraw for userID; %v and error: %w", userID, err)
+		return fmt.Errorf("unbale to publish ledger event for withdraw for userID; %v and error: %w", userID, err)
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func (acc *AccountService) Reserve(
 		return fmt.Errorf("unable to reserve for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &ledger.LedgerEntry{
+	ledgerEvent := &ledger.LedgerEvent{
 		UserID:      userID,
 		Asset:       asset,
 		Amount:      amount,
@@ -110,10 +110,10 @@ func (acc *AccountService) Reserve(
 		ReferenceID: refrenceID,
 	}
 
-	err = acc.ledger.Append(ledgerEntry)
+	err = acc.ledger.Publish(ledgerEvent)
 
 	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for reserve for userID; %v and error: %w", userID, err)
+		return fmt.Errorf("unbale to publish ledger event for reserve for userID; %v and error: %w", userID, err)
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func (acc *AccountService) Release(
 		return fmt.Errorf("unable to release for userID: %v and error: %w", userID, err)
 	}
 
-	ledgerEntry := &ledger.LedgerEntry{
+	ledgerEvent := &ledger.LedgerEvent{
 		UserID:      userID,
 		Asset:       asset,
 		Amount:      amount,
@@ -145,10 +145,10 @@ func (acc *AccountService) Release(
 		ReferenceID: refrenceID,
 	}
 
-	err = acc.ledger.Append(ledgerEntry)
+	err = acc.ledger.Publish(ledgerEvent)
 
 	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for release for userID; %v and error: %w", userID, err)
+		return fmt.Errorf("unbale to publish ledger event for release for userID; %v and error: %w", userID, err)
 	}
 	return nil
 }
@@ -200,56 +200,41 @@ func (acc *AccountService) SettleTrade(settelment *Settlement) error {
 	if err != nil {
 		return fmt.Errorf("balances transaction failed error: %w", err)
 	}
-	ledgerEntry := &ledger.LedgerEntry{
+	ledgerEvent1 := &ledger.LedgerEvent{
 		UserID:      settelment.SellerID,
 		Asset:       settelment.BaseAsset,
 		Amount:      settelment.Quantity,
 		Type:        ledger.TradeDebit,
 		ReferenceID: settelment.ReferenceID,
 	}
-	err = acc.ledger.Append(ledgerEntry)
 
-	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for trade debit for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.BaseAsset, err)
-	}
-
-	ledgerEntry = &ledger.LedgerEntry{
+	ledgerEvent2 := &ledger.LedgerEvent{
 		UserID:      settelment.SellerID,
 		Asset:       settelment.QuoteAsset,
 		Amount:      settelment.Quantity * settelment.Price,
 		Type:        ledger.TradeCredit,
 		ReferenceID: settelment.ReferenceID,
 	}
-	err = acc.ledger.Append(ledgerEntry)
 
-	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for trade credit for (userID: %v and asset: %v) with error: %w", settelment.SellerID, settelment.QuoteAsset, err)
-	}
-
-	ledgerEntry = &ledger.LedgerEntry{
+	ledgerEvent3 := &ledger.LedgerEvent{
 		UserID:      settelment.BuyerID,
 		Asset:       settelment.BaseAsset,
 		Amount:      settelment.Quantity,
 		Type:        ledger.TradeCredit,
 		ReferenceID: settelment.ReferenceID,
 	}
-	err = acc.ledger.Append(ledgerEntry)
 
-	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for trade credit for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.BaseAsset, err)
-	}
-
-	ledgerEntry = &ledger.LedgerEntry{
+	ledgerEvent4 := &ledger.LedgerEvent{
 		UserID:      settelment.BuyerID,
 		Asset:       settelment.QuoteAsset,
 		Amount:      settelment.Quantity * settelment.Price,
 		Type:        ledger.TradeDebit,
 		ReferenceID: settelment.ReferenceID,
 	}
-	err = acc.ledger.Append(ledgerEntry)
+	err = acc.ledger.BulkPublish(ledgerEvent1, ledgerEvent2, ledgerEvent3, ledgerEvent4)
 
 	if err != nil {
-		return fmt.Errorf("unbale to append ledger entry for trade debit for (userID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.QuoteAsset, err)
+		return fmt.Errorf("unbale to bulk publish ledger events for trade settelment for (BuyerUserID: %v, SellerUserID: %v and asset: %v) with error: %w", settelment.BuyerID, settelment.SellerID, settelment.QuoteAsset, err)
 	}
 	return nil
 }
