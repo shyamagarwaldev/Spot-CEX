@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"fmt"
+
 	"github.com/emirpasic/gods/v2/maps/treemap"
 )
 
@@ -221,7 +223,7 @@ func (ob *OrderBook) matchBuy(incomingOrder *Order) ([]Fill, []Trade) {
 	}
 
 	trades := []Trade{}
-
+	counter := 1
 	for incomingOrder.Quantity > 0 {
 		bestAskedPrice, level, exist := ob.BestAsk()
 		if !exist || level.Head == nil || level.Tail == nil || level.OrderCount <= 0 {
@@ -249,6 +251,7 @@ func (ob *OrderBook) matchBuy(incomingOrder *Order) ([]Fill, []Trade) {
 		currMaker.TotalPrice = makerOrder.Price * filled
 
 		trades = append(trades, Trade{
+			ID:         fmt.Sprintf("trade--<%d>--%d", incomingOrder.Sequence, counter),
 			BuyOrderID: incomingOrder.ID,
 			BuyUserID:  incomingOrder.UserID,
 
@@ -259,6 +262,8 @@ func (ob *OrderBook) matchBuy(incomingOrder *Order) ([]Fill, []Trade) {
 			Quantity:  filled,
 			TakerSide: incomingOrder.Side,
 		})
+
+		counter++
 
 		fills = append(fills, currMaker)
 
@@ -289,6 +294,8 @@ func (ob *OrderBook) matchSell(incomingOrder *Order) ([]Fill, []Trade) {
 
 	trades := []Trade{}
 
+	counter := 1
+
 	for incomingOrder.Quantity > 0 {
 		bestBidPrice, level, exist := ob.BestBid()
 		if !exist || level.Head == nil || level.Tail == nil || level.OrderCount <= 0 {
@@ -315,6 +322,7 @@ func (ob *OrderBook) matchSell(incomingOrder *Order) ([]Fill, []Trade) {
 		currMaker.TotalPrice = makerOrder.Price * filled
 
 		trades = append(trades, Trade{
+			ID:          fmt.Sprintf("trade--<%d>--%d", incomingOrder.Sequence, counter),
 			SellOrderID: incomingOrder.ID,
 			SellUserID:  incomingOrder.UserID,
 
@@ -325,6 +333,8 @@ func (ob *OrderBook) matchSell(incomingOrder *Order) ([]Fill, []Trade) {
 			Quantity:  filled,
 			TakerSide: incomingOrder.Side,
 		})
+
+		counter++
 
 		fills = append(fills, currMaker)
 

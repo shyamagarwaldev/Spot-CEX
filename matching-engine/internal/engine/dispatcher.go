@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"sync"
 )
 
 type IDispatcher interface {
@@ -9,6 +10,7 @@ type IDispatcher interface {
 }
 
 type Dispatcher struct {
+	mu      sync.RWMutex
 	workers map[string]IOrderBookWorker
 }
 
@@ -19,6 +21,8 @@ func NewDispatcher() *Dispatcher {
 }
 
 func (d *Dispatcher) Register(symbol string, worker IOrderBookWorker) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	d.workers[symbol] = worker
 }
 
@@ -29,7 +33,9 @@ func (d *Dispatcher) Dispatch(cmd Command) error {
 		return fmt.Errorf("command does not contain symbol")
 	}
 
+	d.mu.RLock()
 	worker, ok := d.workers[symbol]
+	d.mu.RUnlock()
 	if !ok {
 		return fmt.Errorf("no order book worker for symbol: %s", symbol)
 	}
